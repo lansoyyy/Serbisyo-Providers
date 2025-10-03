@@ -2,11 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hanap_raket/firebase_options.dart';
-import 'package:hanap_raket/screens/users/main_screen.dart';
-import 'package:hanap_raket/screens/users/auth/splash_screen.dart';
-import 'package:hanap_raket/screens/users/auth/onboarding_screen.dart';
-import 'package:hanap_raket/screens/users/auth/login_screen.dart';
-import 'package:hanap_raket/screens/users/auth/signup_screen.dart';
 
 import 'package:hanap_raket/screens/providers/provider_main_screen.dart';
 import 'package:hanap_raket/screens/providers/auth/provider_login_screen.dart';
@@ -105,14 +100,8 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      // initialRoute: '/provider-login',
-      initialRoute: '/login',
+      initialRoute: '/provider-login',
       getPages: [
-        GetPage(name: '/onboarding', page: () => const OnboardingScreen()),
-        GetPage(name: '/splash', page: () => const SplashScreen()),
-        GetPage(name: '/login', page: () => const LoginScreen()),
-        GetPage(name: '/signup', page: () => const SignupScreen()),
-        GetPage(name: '/main', page: () => const MainScreen()),
         GetPage(name: '/provider-main', page: () => const ProviderMainScreen()),
         GetPage(
             name: '/provider-login', page: () => const ProviderLoginScreen()),
