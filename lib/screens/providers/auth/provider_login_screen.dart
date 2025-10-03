@@ -8,6 +8,7 @@ import '../../../widgets/text_widget.dart';
 import '../../../widgets/touchable_widget.dart';
 import '../../../widgets/app_text_form_field.dart';
 import '../../../widgets/button_widget.dart';
+import '../../../services/preference_service.dart';
 
 class ProviderLoginScreen extends StatefulWidget {
   const ProviderLoginScreen({Key? key}) : super(key: key);
@@ -111,6 +112,20 @@ class _ProviderLoginScreenState extends State<ProviderLoginScreen>
       final providerData = userDoc.data()!;
       final applicationStatus = providerData['applicationStatus'] as String?;
 
+      // Save user login information if remember me is checked
+      if (_rememberMe) {
+        await PreferenceService.saveUserLoginInfo(
+          userId: userCredential.user!.uid,
+          email: _emailController.text.trim(),
+          rememberMe: true,
+        );
+      } else {
+        // Just set logged in status without saving credentials
+        await PreferenceService.setLoggedIn(true);
+        await PreferenceService.setUserId(userCredential.user!.uid);
+        await PreferenceService.setUserEmail(_emailController.text.trim());
+      }
+
       // Navigate based on application status
       switch (applicationStatus) {
         case 'pending':
@@ -213,7 +228,7 @@ class _ProviderLoginScreenState extends State<ProviderLoginScreen>
                         ),
                         const SizedBox(width: 8),
                         TextWidget(
-                          text: 'support@hanapraket.com',
+                          text: 'support@serbisyo.com',
                           fontSize: 13,
                           fontFamily: 'Bold',
                           color: AppColors.primary,
@@ -372,7 +387,7 @@ class _ProviderLoginScreenState extends State<ProviderLoginScreen>
                     ),
                     const SizedBox(width: 8),
                     TextWidget(
-                      text: 'support@hanapraket.com',
+                      text: 'support@serbisyo.com',
                       fontSize: 13,
                       fontFamily: 'Bold',
                       color: Colors.red,

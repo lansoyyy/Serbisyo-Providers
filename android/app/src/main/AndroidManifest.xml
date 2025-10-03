@@ -31,7 +31,7 @@
         <provider android:authorities="com.facebook.orca.provider.PlatformProvider" /> <!-- allows sharing to Messenger app -->
     </queries>
     <application
-        android:label="Serbisyo"
+        android:label="Serbisyo - Providers"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

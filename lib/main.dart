@@ -2,6 +2,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hanap_raket/firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:hanap_raket/screens/providers/provider_main_screen.dart';
 import 'package:hanap_raket/screens/providers/auth/provider_login_screen.dart';
@@ -35,32 +37,121 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool _isCheckingUpdate = true;
+  bool _isCheckingAuth = true;
   Map<String, dynamic>? _updateInfo;
+  String? _initialRoute;
 
   @override
   void initState() {
     super.initState();
-    _checkForUpdate();
+    _initializeApp();
   }
 
-  Future<void> _checkForUpdate() async {
-    final updateInfo = await VersionService.checkForceUpdate();
+  Future<void> _initializeApp() async {
+    // Check for updates and authentication status in parallel
+    final results = await Future.wait([
+      VersionService.checkForceUpdate(),
+      _checkAuthStatus(),
+    ]);
+
     setState(() {
-      _updateInfo = updateInfo;
+      _updateInfo = results[0] as Map<String, dynamic>?;
       _isCheckingUpdate = false;
+      _isCheckingAuth = false;
     });
+  }
+
+  Future<void> _checkAuthStatus() async {
+    try {
+      // Check if user is logged in according to preferences
+      if (PreferenceService.isLoggedIn()) {
+        final userId = PreferenceService.getUserId();
+        final userEmail = PreferenceService.getUserEmail();
+
+        if (userId != null && userEmail != null) {
+          // Verify user is still authenticated in Firebase
+          final currentUser = FirebaseAuth.instance.currentUser;
+
+          if (currentUser != null && currentUser.uid == userId) {
+            // User is authenticated, check if they are a provider
+            final userDoc = await FirebaseFirestore.instance
+                .collection('providers')
+                .doc(userId)
+                .get();
+
+            if (userDoc.exists) {
+              final providerData = userDoc.data()!;
+              final applicationStatus =
+                  providerData['applicationStatus'] as String?;
+
+              // Set initial route based on application status
+              switch (applicationStatus) {
+                case 'pending':
+                  _initialRoute = '/provider-application-processing';
+                  break;
+                case 'approved':
+                  _initialRoute = '/provider-main';
+                  break;
+                case 'rejected':
+                  // Clear login info for rejected users
+                  await PreferenceService.clearUserLoginInfo();
+                  await FirebaseAuth.instance.signOut();
+                  _initialRoute = '/provider-login';
+                  break;
+                default:
+                  _initialRoute = '/provider-main';
+              }
+            } else {
+              // User is not a provider, clear login info
+              await PreferenceService.clearUserLoginInfo();
+              await FirebaseAuth.instance.signOut();
+              _initialRoute = '/provider-login';
+            }
+          } else {
+            // User is not authenticated in Firebase, clear preferences
+            await PreferenceService.clearUserLoginInfo();
+            _initialRoute = '/provider-login';
+          }
+        } else {
+          // Incomplete login info, clear preferences
+          await PreferenceService.clearUserLoginInfo();
+          _initialRoute = '/provider-login';
+        }
+      } else {
+        // User is not logged in according to preferences
+        _initialRoute = '/provider-login';
+      }
+    } catch (e) {
+      // If there's any error during auth check, default to login screen
+      _initialRoute = '/provider-login';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show loading while checking for updates
-    if (_isCheckingUpdate) {
+    // Show loading while checking for updates and authentication
+    if (_isCheckingUpdate || _isCheckingAuth) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
+          backgroundColor: Colors.white,
           body: Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primary,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  color: AppColors.primary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Loading...',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 16,
+                    fontFamily: 'Medium',
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -80,9 +171,9 @@ class _MyAppState extends State<MyApp> {
       );
     }
 
-    // Normal app flow
+    // Normal app flow with dynamic initial route
     return GetMaterialApp(
-      title: 'Serbisyo',
+      title: 'Serbisyo - Providers',
       theme: ThemeData(
         colorScheme: ColorScheme(
           brightness: Brightness.light,
@@ -100,7 +191,7 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      initialRoute: '/provider-login',
+      initialRoute: _initialRoute ?? '/provider-login',
       getPages: [
         GetPage(name: '/provider-main', page: () => const ProviderMainScreen()),
         GetPage(

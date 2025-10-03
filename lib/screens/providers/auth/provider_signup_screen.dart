@@ -456,6 +456,7 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
             fontFamily: 'Regular',
             color: AppColors.onSecondary,
             align: TextAlign.left,
+            maxLines: 5,
           ),
           actions: [
             TextButton(
@@ -602,6 +603,7 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
                 fontFamily: 'Regular',
                 color: AppColors.onSecondary,
                 align: TextAlign.left,
+                maxLines: 5,
               ),
               const SizedBox(height: 16),
               Container(
@@ -630,6 +632,7 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
                         fontFamily: 'Medium',
                         color: Colors.orange,
                         align: TextAlign.left,
+                        maxLines: 5,
                       ),
                     ),
                   ],

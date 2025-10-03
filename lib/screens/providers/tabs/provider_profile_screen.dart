@@ -10,6 +10,7 @@ import 'dart:io';
 import '../../../utils/colors.dart';
 import '../../../widgets/text_widget.dart';
 import '../../../widgets/touchable_widget.dart';
+import '../../../services/preference_service.dart';
 
 class ProviderProfileScreen extends StatefulWidget {
   const ProviderProfileScreen({Key? key}) : super(key: key);
@@ -4185,7 +4186,13 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
 
   Future<void> _handleLogout() async {
     try {
+      // Clear user login information from preferences
+      await PreferenceService.clearUserLoginInfo();
+
+      // Sign out from Firebase
       await FirebaseAuth.instance.signOut();
+
+      // Navigate to login screen
       Get.offAllNamed('/provider-login');
     } catch (e) {
       if (!mounted) return;
@@ -4215,7 +4222,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   void _contactSupport() async {
     final Uri emailUri = Uri(
       scheme: 'mailto',
-      path: 'support@hanapraket.com',
+      path: 'support@serbisyo.com',
       query: 'subject=Provider Support Request',
     );
 
@@ -4237,7 +4244,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
             ListTile(
               leading: const Icon(Icons.email),
               title: const Text('Email Support'),
-              subtitle: const Text('support@hanapraket.com'),
+              subtitle: const Text('support@serbisyo.com'),
               onTap: () async {
                 if (await canLaunchUrl(emailUri)) {
                   await launchUrl(emailUri);

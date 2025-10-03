@@ -504,7 +504,7 @@ class _ProviderApplicationProcessingScreenState
                         ),
                         const SizedBox(width: 8),
                         TextWidget(
-                          text: 'support@hanapraket.com',
+                          text: 'support@serbisyo.com',
                           fontSize: 13,
                           fontFamily: 'Bold',
                           color: Colors.red,
