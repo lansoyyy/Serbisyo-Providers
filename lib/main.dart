@@ -11,6 +11,7 @@ import 'package:hanap_raket/screens/providers/auth/provider_signup_screen.dart';
 import 'package:hanap_raket/screens/providers/auth/provider_application_processing_screen.dart';
 import 'package:hanap_raket/screens/force_update_screen.dart';
 import 'package:hanap_raket/screens/admin/firebase_init_screen.dart';
+import 'package:hanap_raket/screens/splash_screen.dart';
 import 'utils/colors.dart';
 import 'services/preference_service.dart';
 import 'services/version_service.dart';
@@ -38,6 +39,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   bool _isCheckingUpdate = true;
   bool _isCheckingAuth = true;
+  bool _showSplash = true;
   Map<String, dynamic>? _updateInfo;
   String? _initialRoute;
 
@@ -45,6 +47,15 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _initializeApp();
+
+    // Hide splash screen after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _showSplash = false;
+        });
+      }
+    });
   }
 
   Future<void> _initializeApp() async {
@@ -129,6 +140,14 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Show splash screen
+    if (_showSplash) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: const SplashScreen(),
+      );
+    }
+
     // Show loading while checking for updates and authentication
     if (_isCheckingUpdate || _isCheckingAuth) {
       return MaterialApp(

@@ -30,7 +30,7 @@ class _ProviderLoginScreenState extends State<ProviderLoginScreen>
 
   bool _isPasswordVisible = false;
   bool _isLoading = false;
-  bool _rememberMe = false;
+  bool _rememberMe = true;
 
   @override
   void initState() {
