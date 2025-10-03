@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Serbisyo</string>
+    
+    <!-- Facebook Configuration -->
+    <string name="facebook_app_id">581133848359906</string>
+    <string name="fb_login_protocol_scheme">fb581133848359906</string>
+    <string name="facebook_client_token">1fa733dc73112f6eb59ff0b5b34cc0d0</string>
+</resources>
