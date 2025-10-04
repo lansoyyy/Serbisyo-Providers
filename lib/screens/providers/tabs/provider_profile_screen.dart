@@ -437,14 +437,11 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
 
         if (snapshot.hasData && snapshot.data?.data() != null) {
           final data = snapshot.data!.data()!;
-          final firstName = (data['firstName'] ?? '').toString().trim();
-          final lastName = (data['lastName'] ?? '').toString().trim();
+          final fullName = (data['fullName'] ?? '').toString().trim();
           final business = (data['businessName'] ?? '').toString().trim();
           final docEmail = (data['email'] ?? '').toString().trim();
 
-          final combined =
-              [firstName, lastName].where((e) => e.isNotEmpty).join(' ').trim();
-          if (combined.isNotEmpty) displayName = combined;
+          if (fullName.isNotEmpty) displayName = fullName;
           if (business.isNotEmpty) businessName = business;
           if (docEmail.isNotEmpty) email = docEmail;
         }
@@ -944,12 +941,6 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                 AppColors.primary.shade600,
               ),
               _buildContactItem(
-                FontAwesomeIcons.envelope,
-                'Email',
-                email,
-                Colors.orange,
-              ),
-              _buildContactItem(
                 FontAwesomeIcons.locationDot,
                 'Location',
                 location,
@@ -1015,12 +1006,10 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   Widget _buildExperienceCard() {
     final uid = PreferenceService.getUserId();
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('providers')
           .doc(uid ?? '_')
-          .collection('experience')
-          .orderBy('startDate', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -1043,7 +1032,9 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
           );
         }
 
-        final experiences = snapshot.data?.docs ?? [];
+        final providerData = snapshot.data?.data() ?? {};
+        final documents =
+            providerData['documents'] as Map<String, dynamic>? ?? {};
 
         return Container(
           padding: const EdgeInsets.all(20),
@@ -1066,19 +1057,19 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.shade600.withOpacity(0.1),
+                      color: Colors.blue.shade600.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const FaIcon(
-                      FontAwesomeIcons.briefcase,
-                      color: AppColors.primary,
+                      FontAwesomeIcons.fileShield,
+                      color: Colors.blue,
                       size: 20,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextWidget(
-                      text: 'Experience',
+                      text: 'Police Clearance',
                       fontSize: 20,
                       fontFamily: 'Bold',
                       color: AppColors.primary,
@@ -1086,17 +1077,17 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                   ),
                   TouchableWidget(
                     onTap: () {
-                      _showAddExperienceDialog();
+                      _showAddPoliceClearanceDialog();
                     },
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.shade600.withOpacity(0.1),
+                        color: Colors.blue.shade600.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const FaIcon(
                         FontAwesomeIcons.plus,
-                        color: AppColors.primary,
+                        color: Colors.blue,
                         size: 18,
                       ),
                     ),
@@ -1104,20 +1095,20 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                 ],
               ),
               const SizedBox(height: 16),
-              if (experiences.isEmpty)
+              if (documents.isEmpty || documents['policeClearance'] == null)
                 Container(
                   padding: const EdgeInsets.all(16),
                   child: Center(
                     child: Column(
                       children: [
                         Icon(
-                          FontAwesomeIcons.briefcase,
+                          FontAwesomeIcons.fileShield,
                           size: 32,
                           color: Colors.grey.withOpacity(0.5),
                         ),
                         const SizedBox(height: 8),
                         TextWidget(
-                          text: 'No experience added yet',
+                          text: 'No police clearance uploaded yet',
                           fontSize: 14,
                           fontFamily: 'Medium',
                           color: AppColors.onSecondary.withOpacity(0.7),
@@ -1125,7 +1116,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                         const SizedBox(height: 4),
                         TextWidget(
                           text:
-                              'Add your work experience to showcase your expertise',
+                              'Upload your police clearance to verify your background',
                           fontSize: 12,
                           fontFamily: 'Regular',
                           color: AppColors.onSecondary.withOpacity(0.5),
@@ -1136,16 +1127,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                   ),
                 )
               else
-                ...experiences.map((doc) {
-                  final data = doc.data();
-                  return _buildExperienceItem(
-                    data['position'] ?? 'Position',
-                    data['company'] ?? 'Company',
-                    data['duration'] ?? 'Duration',
-                    data['description'] ?? 'Description',
-                    doc.id,
-                  );
-                }).toList(),
+                _buildPoliceClearanceItem(documents['policeClearance'] ?? ''),
             ],
           ),
         );
@@ -1153,8 +1135,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
     );
   }
 
-  Widget _buildExperienceItem(String position, String company, String duration,
-      String description, String docId) {
+  Widget _buildPoliceClearanceItem(String policeClearancePath) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
@@ -1162,7 +1143,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
         color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.grey.withOpacity(0.2),
+          color: Colors.blue.withOpacity(0.2),
         ),
       ),
       child: Column(
@@ -1170,9 +1151,22 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
         children: [
           Row(
             children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const FaIcon(
+                  FontAwesomeIcons.fileShield,
+                  color: Colors.blue,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: TextWidget(
-                  text: position,
+                  text: 'Police Clearance Certificate',
                   fontSize: 16,
                   fontFamily: 'Bold',
                   color: AppColors.primary,
@@ -1181,23 +1175,22 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
               PopupMenuButton<String>(
                 onSelected: (value) {
                   switch (value) {
-                    case 'edit':
-                      _showEditExperienceDialog(
-                          docId, position, company, duration, description);
+                    case 'view':
+                      _viewDocument(policeClearancePath, 'Police Clearance');
                       break;
                     case 'delete':
-                      _showDeleteExperienceDialog(docId, position);
+                      _deletePoliceClearance();
                       break;
                   }
                 },
                 itemBuilder: (context) => [
                   const PopupMenuItem(
-                    value: 'edit',
+                    value: 'view',
                     child: Row(
                       children: [
-                        Icon(Icons.edit, size: 16),
+                        Icon(Icons.visibility, size: 16),
                         SizedBox(width: 8),
-                        Text('Edit'),
+                        Text('View'),
                       ],
                     ),
                   ),
@@ -1223,40 +1216,12 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              TextWidget(
-                text: company,
-                fontSize: 14,
-                fontFamily: 'Medium',
-                color: AppColors.primary.shade600,
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 4,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.5),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              TextWidget(
-                text: duration,
-                fontSize: 14,
-                fontFamily: 'Regular',
-                color: AppColors.onSecondary.withOpacity(0.6),
-              ),
-            ],
-          ),
           const SizedBox(height: 8),
           TextWidget(
-            text: description,
+            text: 'Uploaded document verified',
             fontSize: 14,
             fontFamily: 'Regular',
             color: AppColors.onSecondary.withOpacity(0.7),
-            maxLines: 3,
           ),
         ],
       ),
@@ -1266,12 +1231,10 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   Widget _buildCertificationsCard() {
     final uid = PreferenceService.getUserId();
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('providers')
           .doc(uid ?? '_')
-          .collection('certifications')
-          .orderBy('year', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -1294,7 +1257,20 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
           );
         }
 
-        final certifications = snapshot.data?.docs ?? [];
+        final providerData = snapshot.data?.data() ?? {};
+        final documents =
+            providerData['documents'] as Map<String, dynamic>? ?? {};
+
+        // Filter certificate documents
+        final certificateDocs = <String, dynamic>{};
+        documents.forEach((key, value) {
+          if (key != 'policeClearance' &&
+              key != 'profilePicture' &&
+              value != null &&
+              value.toString().isNotEmpty) {
+            certificateDocs[key] = value;
+          }
+        });
 
         return Container(
           padding: const EdgeInsets.all(20),
@@ -1329,7 +1305,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextWidget(
-                      text: 'Certifications',
+                      text: 'Certificate',
                       fontSize: 20,
                       fontFamily: 'Bold',
                       color: AppColors.primary,
@@ -1337,7 +1313,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                   ),
                   TouchableWidget(
                     onTap: () {
-                      _showAddCertificationDialog();
+                      _showAddCertificateDialog();
                     },
                     child: Container(
                       padding: const EdgeInsets.all(6),
@@ -1355,7 +1331,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                 ],
               ),
               const SizedBox(height: 16),
-              if (certifications.isEmpty)
+              if (certificateDocs.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(16),
                   child: Center(
@@ -1368,14 +1344,14 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                         ),
                         const SizedBox(height: 8),
                         TextWidget(
-                          text: 'No certifications added yet',
+                          text: 'No certificates uploaded yet',
                           fontSize: 14,
                           fontFamily: 'Medium',
                           color: AppColors.onSecondary.withOpacity(0.7),
                         ),
                         const SizedBox(height: 4),
                         TextWidget(
-                          text: 'Add your certifications to build credibility',
+                          text: 'Upload your certificates to build credibility',
                           fontSize: 12,
                           fontFamily: 'Regular',
                           color: AppColors.onSecondary.withOpacity(0.5),
@@ -1386,13 +1362,9 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                   ),
                 )
               else
-                ...certifications.map((doc) {
-                  final data = doc.data();
-                  return _buildCertificationItem(
-                    data['name'] ?? 'Certification',
-                    data['year'] ?? 'Year',
-                    doc.id,
-                  );
+                ...certificateDocs.entries.map((entry) {
+                  return _buildCertificateItem(
+                      entry.key, entry.value.toString());
                 }).toList(),
             ],
           ),
@@ -1401,7 +1373,14 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
     );
   }
 
-  Widget _buildCertificationItem(String name, String year, String docId) {
+  Widget _buildCertificateItem(String certificateType, String certificatePath) {
+    // Format certificate type to be more readable
+    String formattedType = certificateType.replaceAll('_', ' ');
+    formattedType = formattedType
+        .split(' ')
+        .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+        .join(' ');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -1429,38 +1408,31 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
           const SizedBox(width: 12),
           Expanded(
             child: TextWidget(
-              text: name,
+              text: formattedType,
               fontSize: 16,
               fontFamily: 'Medium',
               color: AppColors.primary,
             ),
           ),
-          TextWidget(
-            text: year,
-            fontSize: 14,
-            fontFamily: 'Medium',
-            color: AppColors.onSecondary.withOpacity(0.6),
-          ),
-          const SizedBox(width: 8),
           PopupMenuButton<String>(
             onSelected: (value) {
               switch (value) {
-                case 'edit':
-                  _showEditCertificationDialog(docId, name, year);
+                case 'view':
+                  _viewDocument(certificatePath, formattedType);
                   break;
                 case 'delete':
-                  _showDeleteCertificationDialog(docId, name);
+                  _deleteCertificate(certificateType);
                   break;
               }
             },
             itemBuilder: (context) => [
               const PopupMenuItem(
-                value: 'edit',
+                value: 'view',
                 child: Row(
                   children: [
-                    Icon(Icons.edit, size: 16),
+                    Icon(Icons.visibility, size: 16),
                     SizedBox(width: 8),
-                    Text('Edit'),
+                    Text('View'),
                   ],
                 ),
               ),
@@ -2796,18 +2768,6 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email Address',
-                    hintText: 'your.email@gmail.com',
-                    prefixIcon: const Icon(FontAwesomeIcons.envelope, size: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
                   controller: locationController,
                   decoration: InputDecoration(
                     labelText: 'Location',
@@ -2873,7 +2833,6 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                             .doc(uid)
                             .update({
                           'phone': phoneController.text.trim(),
-                          'email': emailController.text.trim(),
                           'location': locationController.text.trim(),
                           'availability': availabilityController.text.trim(),
                           'updatedAt': FieldValue.serverTimestamp(),
@@ -3866,8 +3825,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
       return;
     }
 
-    String firstName = '';
-    String lastName = '';
+    String fullName = '';
     String businessName = '';
     String phone = '';
 
@@ -3878,8 +3836,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
           .get();
       final data = doc.data();
       if (data != null) {
-        firstName = (data['firstName'] ?? '').toString();
-        lastName = (data['lastName'] ?? '').toString();
+        fullName = (data['fullName'] ?? '').toString();
         businessName = (data['businessName'] ?? '').toString();
         phone = (data['phone'] ?? '').toString();
       }
@@ -3945,17 +3902,10 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
 
                   // Form Fields
                   _buildEditField(
-                    'First Name',
-                    firstName,
+                    'Full Name',
+                    fullName,
                     FontAwesomeIcons.user,
-                    (value) => firstName = value,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildEditField(
-                    'Last Name',
-                    lastName,
-                    FontAwesomeIcons.user,
-                    (value) => lastName = value,
+                    (value) => fullName = value,
                   ),
                   const SizedBox(height: 16),
                   _buildEditField(
@@ -4005,8 +3955,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                                   .collection('providers')
                                   .doc(uid)
                                   .set({
-                                'firstName': firstName,
-                                'lastName': lastName,
+                                'fullName': fullName,
                                 'businessName': businessName,
                                 'phone': phone,
                                 'updatedAt': FieldValue.serverTimestamp(),
@@ -4979,5 +4928,621 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
         );
       }
     }
+  }
+
+  // New methods for police clearance and certificates
+  void _showAddPoliceClearanceDialog() {
+    final ImagePicker _picker = ImagePicker();
+    File? _selectedFile;
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const FaIcon(
+                  FontAwesomeIcons.fileShield,
+                  color: Colors.blue,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 12),
+              TextWidget(
+                text: 'Upload Police Clearance',
+                fontSize: 18,
+                fontFamily: 'Bold',
+                color: AppColors.primary,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TouchableWidget(
+                onTap: () async {
+                  final XFile? pickedFile = await _picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (pickedFile != null) {
+                    setDialogState(() {
+                      _selectedFile = File(pickedFile.path);
+                    });
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.blue.withOpacity(0.3),
+                      style: BorderStyle.solid,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.blue.withOpacity(0.05),
+                  ),
+                  child: _selectedFile != null
+                      ? Column(
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.green),
+                            const SizedBox(height: 8),
+                            TextWidget(
+                              text:
+                                  'File selected: ${_selectedFile!.path.split('/').last}',
+                              fontSize: 12,
+                              fontFamily: 'Regular',
+                              color: AppColors.onSecondary,
+                            ),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            const FaIcon(
+                              FontAwesomeIcons.cloudArrowUp,
+                              color: Colors.blue,
+                              size: 24,
+                            ),
+                            const SizedBox(height: 8),
+                            TextWidget(
+                              text: 'Tap to select file',
+                              fontSize: 14,
+                              fontFamily: 'Medium',
+                              color: Colors.blue,
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: TextWidget(
+                text: 'Cancel',
+                fontSize: 14,
+                fontFamily: 'Medium',
+                color: AppColors.onSecondary,
+              ),
+            ),
+            ElevatedButton(
+              onPressed: isSaving || _selectedFile == null
+                  ? null
+                  : () async {
+                      final uid = PreferenceService.getUserId();
+                      if (uid == null) return;
+
+                      setDialogState(() => isSaving = true);
+                      try {
+                        // Upload file to Firebase Storage
+                        final storageRef = FirebaseStorage.instance
+                            .ref()
+                            .child('documents')
+                            .child('providers')
+                            .child(uid)
+                            .child(
+                                'police_clearance_${DateTime.now().millisecondsSinceEpoch}.jpg');
+
+                        await storageRef.putFile(_selectedFile!);
+                        final downloadURL = await storageRef.getDownloadURL();
+
+                        // Update provider document with police clearance URL
+                        await FirebaseFirestore.instance
+                            .collection('providers')
+                            .doc(uid)
+                            .update({
+                          'documents.policeClearance': downloadURL,
+                          'updatedAt': FieldValue.serverTimestamp(),
+                        });
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Police clearance uploaded successfully!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isSaving = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Failed to upload police clearance.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: TextWidget(
+                text: isSaving ? 'Uploading...' : 'Upload',
+                fontSize: 14,
+                fontFamily: 'Bold',
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddCertificateDialog() {
+    final ImagePicker _picker = ImagePicker();
+    File? _selectedFile;
+    final TextEditingController _nameController = TextEditingController();
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const FaIcon(
+                  FontAwesomeIcons.certificate,
+                  color: Colors.orange,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 12),
+              TextWidget(
+                text: 'Upload Certificate',
+                fontSize: 18,
+                fontFamily: 'Bold',
+                color: AppColors.primary,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Certificate Name',
+                  hintText: 'e.g., Professional Training Certificate',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TouchableWidget(
+                onTap: () async {
+                  final XFile? pickedFile = await _picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (pickedFile != null) {
+                    setDialogState(() {
+                      _selectedFile = File(pickedFile.path);
+                    });
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.orange.withOpacity(0.3),
+                      style: BorderStyle.solid,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.orange.withOpacity(0.05),
+                  ),
+                  child: _selectedFile != null
+                      ? Column(
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.green),
+                            const SizedBox(height: 8),
+                            TextWidget(
+                              text:
+                                  'File selected: ${_selectedFile!.path.split('/').last}',
+                              fontSize: 12,
+                              fontFamily: 'Regular',
+                              color: AppColors.onSecondary,
+                            ),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            const FaIcon(
+                              FontAwesomeIcons.cloudArrowUp,
+                              color: Colors.orange,
+                              size: 24,
+                            ),
+                            const SizedBox(height: 8),
+                            TextWidget(
+                              text: 'Tap to select file',
+                              fontSize: 14,
+                              fontFamily: 'Medium',
+                              color: Colors.orange,
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: TextWidget(
+                text: 'Cancel',
+                fontSize: 14,
+                fontFamily: 'Medium',
+                color: AppColors.onSecondary,
+              ),
+            ),
+            ElevatedButton(
+              onPressed: isSaving ||
+                      _selectedFile == null ||
+                      _nameController.text.trim().isEmpty
+                  ? null
+                  : () async {
+                      final uid = PreferenceService.getUserId();
+                      if (uid == null) return;
+
+                      setDialogState(() => isSaving = true);
+                      try {
+                        // Create a field name from the certificate name
+                        final fieldName = _nameController.text
+                            .trim()
+                            .toLowerCase()
+                            .replaceAll(' ', '_');
+
+                        // Upload file to Firebase Storage
+                        final storageRef = FirebaseStorage.instance
+                            .ref()
+                            .child('documents')
+                            .child('providers')
+                            .child(uid)
+                            .child(
+                                '${fieldName}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+
+                        await storageRef.putFile(_selectedFile!);
+                        final downloadURL = await storageRef.getDownloadURL();
+
+                        // Update provider document with certificate URL
+                        await FirebaseFirestore.instance
+                            .collection('providers')
+                            .doc(uid)
+                            .update({
+                          'documents.$fieldName': downloadURL,
+                          'updatedAt': FieldValue.serverTimestamp(),
+                        });
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content:
+                                  Text('Certificate uploaded successfully!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isSaving = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Failed to upload certificate.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: TextWidget(
+                text: isSaving ? 'Uploading...' : 'Upload',
+                fontSize: 14,
+                fontFamily: 'Bold',
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _viewDocument(String documentPath, String documentTitle) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          height: MediaQuery.of(context).size.height * 0.8,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Header
+              Row(
+                children: [
+                  Expanded(
+                    child: TextWidget(
+                      text: documentTitle,
+                      fontSize: 18,
+                      fontFamily: 'Bold',
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  TouchableWidget(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.grey,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Image viewer
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey.shade100,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: documentPath.startsWith('http')
+                        ? Image.network(
+                            documentPath,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      size: 48,
+                                      color: Colors.red,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Failed to load image',
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            },
+                          )
+                        : Image.file(
+                            File(documentPath),
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      size: 48,
+                                      color: Colors.red,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Failed to load image',
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Actions
+              Row(
+                children: [
+                  Expanded(
+                    child: TouchableWidget(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: TextWidget(
+                            text: 'Close',
+                            fontSize: 16,
+                            fontFamily: 'Bold',
+                            color: AppColors.onSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _deletePoliceClearance() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Police Clearance'),
+        content: const Text(
+            'Are you sure you want to delete your police clearance?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              final uid = PreferenceService.getUserId();
+              if (uid == null) return;
+
+              try {
+                await FirebaseFirestore.instance
+                    .collection('providers')
+                    .doc(uid)
+                    .update({
+                  'documents.policeClearance': FieldValue.delete(),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Police clearance deleted successfully!'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to delete police clearance.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteCertificate(String certificateType) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Certificate'),
+        content: Text('Are you sure you want to delete this certificate?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              final uid = PreferenceService.getUserId();
+              if (uid == null) return;
+
+              try {
+                await FirebaseFirestore.instance
+                    .collection('providers')
+                    .doc(uid)
+                    .update({
+                  'documents.$certificateType': FieldValue.delete(),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Certificate deleted successfully!'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to delete certificate.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 }

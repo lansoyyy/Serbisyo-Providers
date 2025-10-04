@@ -20,9 +20,9 @@ class VersionService {
       }
 
       final data = versionDoc.data()!;
-      final currentVersion = data['current_version'] as String?;
-      final changes = data['changes'] as List<dynamic>? ?? [];
-      final updateUrl = data['update_url'] as String? ?? '';
+      final currentVersion = data['provider_current_version'] as String?;
+      final changes = data['provider_changes'] as List<dynamic>? ?? [];
+      final updateUrl = data['provider_update_url'] as String? ?? '';
 
       // Check if versions match
       if (currentVersion != null && currentVersion != APP_VERSION) {

@@ -403,7 +403,7 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
       // Save user login information to preferences
       await PreferenceService.saveUserLoginInfo(
         userId: uid,
-        username: _usernameController.text.trim(),
+        username: _fullNameController.text.trim(),
         rememberMe: true,
       );
 
