@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:get/get.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 import 'tabs/provider_home_screen.dart';
 import 'tabs/provider_bookings_screen.dart';
 import 'tabs/provider_messages_screen.dart';
 import 'tabs/provider_profile_screen.dart' hide Row, SizedBox;
+import '../../services/preference_service.dart';
 
 class ProviderMainScreen extends StatefulWidget {
   final int initialTab;
@@ -361,14 +363,12 @@ class _ProviderMainScreenState extends State<ProviderMainScreen>
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
+              // Clear user login information from preferences
+              await PreferenceService.clearUserLoginInfo();
               // Navigate to login or splash
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/login',
-                (route) => false,
-              );
+              Get.offAllNamed('/provider-login');
             },
             child: TextWidget(
               text: 'Logout',

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../utils/colors.dart';
 import '../../../widgets/text_widget.dart';
 import '../../../widgets/touchable_widget.dart';
 import '../../../services/chat_service.dart';
 import '../../../models/message_model.dart';
+import '../../../services/preference_service.dart';
 
 // Individual Chat Screen
 class ProviderChatScreen extends StatefulWidget {
@@ -160,8 +160,8 @@ class _ProviderChatScreenState extends State<ProviderChatScreen> {
                     final messageDoc = messages[index];
                     final message =
                         Message.fromMap(messageDoc.data(), messageDoc.id);
-                    final isMe = message.senderId ==
-                        FirebaseAuth.instance.currentUser!.uid;
+                    final isMe =
+                        message.senderId == PreferenceService.getUserId();
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 16),

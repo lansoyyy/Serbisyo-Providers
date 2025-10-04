@@ -1,10 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../models/message_model.dart';
+import 'preference_service.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Get the chat room ID for two users (consistent regardless of order)
   String _getChatRoomId(String user1Id, String user2Id) {
@@ -19,7 +18,7 @@ class ChatService {
     required String text,
     required String contactName,
   }) async {
-    final String currentUserId = _auth.currentUser!.uid;
+    final String currentUserId = PreferenceService.getUserId()!;
     final String chatRoomId = _getChatRoomId(currentUserId, receiverId);
     final Timestamp timestamp = Timestamp.now();
 
@@ -66,7 +65,7 @@ class ChatService {
 
   // Get messages for a chat room
   Stream<QuerySnapshot<Map<String, dynamic>>> getMessages(String receiverId) {
-    final String currentUserId = _auth.currentUser!.uid;
+    final String currentUserId = PreferenceService.getUserId()!;
     final String chatRoomId = _getChatRoomId(currentUserId, receiverId);
 
     return _firestore
@@ -79,7 +78,7 @@ class ChatService {
 
   // Mark messages as read
   Future<void> markMessagesAsRead(String receiverId) async {
-    final String currentUserId = _auth.currentUser!.uid;
+    final String currentUserId = PreferenceService.getUserId()!;
     final String chatRoomId = _getChatRoomId(currentUserId, receiverId);
 
     // Update unread count for current user
@@ -108,7 +107,7 @@ class ChatService {
 
   // Get unread message count
   Stream<int> getUnreadCount(String userId) {
-    final String currentUserId = _auth.currentUser!.uid;
+    final String currentUserId = PreferenceService.getUserId()!;
     final String chatRoomId = _getChatRoomId(currentUserId, userId);
 
     return _firestore
@@ -127,7 +126,7 @@ class ChatService {
 
   // Get last message for a chat room
   Stream<DocumentSnapshot<Map<String, dynamic>>> getLastMessage(String userId) {
-    final String currentUserId = _auth.currentUser!.uid;
+    final String currentUserId = PreferenceService.getUserId()!;
     final String chatRoomId = _getChatRoomId(currentUserId, userId);
 
     return _firestore.collection('chatrooms').doc(chatRoomId).snapshots();

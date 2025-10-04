@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../utils/colors.dart';
 import '../../../widgets/text_widget.dart';
@@ -19,7 +18,7 @@ class ProviderLoginScreen extends StatefulWidget {
 
 class _ProviderLoginScreenState extends State<ProviderLoginScreen>
     with TickerProviderStateMixin {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -76,7 +75,7 @@ class _ProviderLoginScreenState extends State<ProviderLoginScreen>
   void dispose() {
     _slideController.dispose();
     _fadeController.dispose();
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -89,41 +88,49 @@ class _ProviderLoginScreenState extends State<ProviderLoginScreen>
     });
 
     try {
-      // Sign in with Firebase Auth
-      final UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      // Find the user by username in Firestore
+      final username = _usernameController.text.trim();
+      final password = _passwordController.text.trim();
 
-      // Check if user is a provider
-      final userDoc = await FirebaseFirestore.instance
+      final querySnapshot = await FirebaseFirestore.instance
           .collection('providers')
-          .doc(userCredential.user!.uid)
+          .where('username', isEqualTo: username)
+          .limit(1)
           .get();
 
-      if (!userDoc.exists) {
-        // User is not a provider
-        await FirebaseAuth.instance.signOut();
-        throw Exception(
-            'Provider account not found. Please check your credentials or register as a provider.');
+      if (querySnapshot.docs.isEmpty) {
+        throw Exception('No provider account found with this username.');
       }
 
+      final userDoc = querySnapshot.docs.first;
       final providerData = userDoc.data()!;
+      final storedPassword = providerData['password'] as String?;
+
+      if (storedPassword == null) {
+        throw Exception(
+            'Provider account is incomplete. Please contact support.');
+      }
+
+      // Verify the password (in a real app, you should use proper password hashing)
+      if (storedPassword != password) {
+        throw Exception('Incorrect password. Please try again.');
+      }
+
       final applicationStatus = providerData['applicationStatus'] as String?;
+      final userId = userDoc.id;
 
       // Save user login information if remember me is checked
       if (_rememberMe) {
         await PreferenceService.saveUserLoginInfo(
-          userId: userCredential.user!.uid,
-          email: _emailController.text.trim(),
+          userId: userId,
+          username: username,
           rememberMe: true,
         );
       } else {
         // Just set logged in status without saving credentials
         await PreferenceService.setLoggedIn(true);
-        await PreferenceService.setUserId(userCredential.user!.uid);
-        await PreferenceService.setUserEmail(_emailController.text.trim());
+        await PreferenceService.setUserId(userId);
+        await PreferenceService.setUsername(username);
       }
 
       // Navigate based on application status
@@ -135,31 +142,11 @@ class _ProviderLoginScreenState extends State<ProviderLoginScreen>
           Get.offAllNamed('/provider-main');
           break;
         case 'rejected':
-          await FirebaseAuth.instance.signOut();
           _showRejectionDialog();
           break;
         default:
           Get.offAllNamed('/provider-main');
       }
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = 'Login failed. Please try again.';
-
-      switch (e.code) {
-        case 'user-not-found':
-          errorMessage = 'No provider account found with this email.';
-          break;
-        case 'wrong-password':
-          errorMessage = 'Incorrect password. Please try again.';
-          break;
-        case 'invalid-email':
-          errorMessage = 'Please enter a valid email address.';
-          break;
-        case 'too-many-requests':
-          errorMessage = 'Too many failed attempts. Please try again later.';
-          break;
-      }
-
-      _showErrorDialog(errorMessage);
     } catch (e) {
       _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
     } finally {
@@ -544,8 +531,8 @@ class _ProviderLoginScreenState extends State<ProviderLoginScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Email Field
-              _buildEmailField(),
+              // Username Field
+              _buildUsernameField(),
 
               const SizedBox(height: 16),
 
@@ -575,33 +562,33 @@ class _ProviderLoginScreenState extends State<ProviderLoginScreen>
     );
   }
 
-  Widget _buildEmailField() {
+  Widget _buildUsernameField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextWidget(
-          text: 'Email',
+          text: 'Username',
           fontSize: 14,
           fontFamily: 'Bold',
           color: AppColors.primary,
         ),
         const SizedBox(height: 8),
         AppTextFormField(
-          controller: _emailController,
-          labelText: 'Email',
-          hintText: 'Enter your email',
+          controller: _usernameController,
+          labelText: 'Username',
+          hintText: 'Enter your username',
           prefixIcon: const Icon(
-            FontAwesomeIcons.envelope,
+            FontAwesomeIcons.at,
             size: 18,
           ),
-          keyboardType: TextInputType.emailAddress,
+          keyboardType: TextInputType.text,
           textInputAction: TextInputAction.next,
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Please enter your email';
+              return 'Please enter your username';
             }
-            if (!GetUtils.isEmail(value)) {
-              return 'Please enter a valid email';
+            if (value.length < 3) {
+              return 'Username must be at least 3 characters';
             }
             return null;
           },

@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../../utils/colors.dart';
 import '../../../widgets/text_widget.dart';
 import '../../../widgets/touchable_widget.dart';
 import '../subscreens/booking_details_screen.dart';
 import '../subscreens/provider_chat_screen.dart';
+import '../../../services/preference_service.dart';
 
 // Add this line for FieldValue
 // ignore: unused_import
@@ -62,7 +62,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen>
   // Method to migrate existing bookings' customer data to customers subcollection
   Future<void> _migrateCustomerData() async {
     try {
-      final providerId = FirebaseAuth.instance.currentUser?.uid;
+      final providerId = PreferenceService.getUserId();
       if (providerId == null) return;
 
       // Check if migration has already been performed
@@ -323,7 +323,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen>
   }
 
   Widget _buildQuickStats() {
-    final providerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final providerId = PreferenceService.getUserId() ?? '';
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
@@ -482,7 +482,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen>
 
   // Pending Bookings Tab
   Widget _buildPendingBookings() {
-    final providerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final providerId = PreferenceService.getUserId() ?? '';
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -558,7 +558,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen>
 
   // Active Bookings Tab
   Widget _buildActiveBookings() {
-    final providerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final providerId = PreferenceService.getUserId() ?? '';
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -634,7 +634,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen>
 
   // Completed Bookings Tab
   Widget _buildCompletedBookings() {
-    final providerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final providerId = PreferenceService.getUserId() ?? '';
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -710,7 +710,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen>
 
   // Customers Tab
   Widget _buildCustomersTab() {
-    final providerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final providerId = PreferenceService.getUserId() ?? '';
     // Add a search controller
     final TextEditingController searchController = TextEditingController();
     // Add a ValueNotifier for search query

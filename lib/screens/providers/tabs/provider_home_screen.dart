@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
@@ -9,6 +8,7 @@ import '../../../utils/colors.dart';
 import '../../../widgets/text_widget.dart';
 import '../../../widgets/touchable_widget.dart';
 import '../subscreens/provider_notifications_screen.dart';
+import '../../../services/preference_service.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({Key? key}) : super(key: key);
@@ -135,8 +135,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
                             DocumentSnapshot<Map<String, dynamic>>>(
                           stream: FirebaseFirestore.instance
                               .collection('providers')
-                              .doc(
-                                  FirebaseAuth.instance.currentUser?.uid ?? '_')
+                              .doc(PreferenceService.getUserId() ?? '_')
                               .snapshots(),
                           builder: (context, snapshot) {
                             if (snapshot.hasData &&
@@ -995,7 +994,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
 
   Future<void> _fetchProviderData() async {
     try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
+      final userId = PreferenceService.getUserId();
       if (userId == null) {
         setState(() {
           _errorMessage = 'User not authenticated';
@@ -1027,7 +1026,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
 
   Future<void> _fetchPendingBookings() async {
     try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
+      final userId = PreferenceService.getUserId();
       if (userId == null) return;
 
       // Calculate the timestamp for 7 days ago
@@ -1054,7 +1053,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
 
   Future<void> _fetchConfirmedBookings() async {
     try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
+      final userId = PreferenceService.getUserId();
 
       if (userId == null) return;
 
@@ -1076,7 +1075,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
 
   Future<void> _fetchCompletedBookings() async {
     try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
+      final userId = PreferenceService.getUserId();
       if (userId == null) return;
 
       final snapshot = await FirebaseFirestore.instance
@@ -1264,7 +1263,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen>
   Future<void> _uploadProfileImage() async {
     if (_profileImage == null) return;
 
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = PreferenceService.getUserId();
     if (uid == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

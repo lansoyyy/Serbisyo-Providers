@@ -77,49 +77,38 @@ class _MyAppState extends State<MyApp> {
       // Check if user is logged in according to preferences
       if (PreferenceService.isLoggedIn()) {
         final userId = PreferenceService.getUserId();
-        final userEmail = PreferenceService.getUserEmail();
+        final username = PreferenceService.getUsername();
 
-        if (userId != null && userEmail != null) {
-          // Verify user is still authenticated in Firebase
-          final currentUser = FirebaseAuth.instance.currentUser;
+        if (userId != null && username != null) {
+          // Check if user exists in Firestore
+          final userDoc = await FirebaseFirestore.instance
+              .collection('providers')
+              .doc(userId)
+              .get();
 
-          if (currentUser != null && currentUser.uid == userId) {
-            // User is authenticated, check if they are a provider
-            final userDoc = await FirebaseFirestore.instance
-                .collection('providers')
-                .doc(userId)
-                .get();
+          if (userDoc.exists) {
+            final providerData = userDoc.data()!;
+            final applicationStatus =
+                providerData['applicationStatus'] as String?;
 
-            if (userDoc.exists) {
-              final providerData = userDoc.data()!;
-              final applicationStatus =
-                  providerData['applicationStatus'] as String?;
-
-              // Set initial route based on application status
-              switch (applicationStatus) {
-                case 'pending':
-                  _initialRoute = '/provider-application-processing';
-                  break;
-                case 'approved':
-                  _initialRoute = '/provider-main';
-                  break;
-                case 'rejected':
-                  // Clear login info for rejected users
-                  await PreferenceService.clearUserLoginInfo();
-                  await FirebaseAuth.instance.signOut();
-                  _initialRoute = '/provider-login';
-                  break;
-                default:
-                  _initialRoute = '/provider-main';
-              }
-            } else {
-              // User is not a provider, clear login info
-              await PreferenceService.clearUserLoginInfo();
-              await FirebaseAuth.instance.signOut();
-              _initialRoute = '/provider-login';
+            // Set initial route based on application status
+            switch (applicationStatus) {
+              case 'pending':
+                _initialRoute = '/provider-application-processing';
+                break;
+              case 'approved':
+                _initialRoute = '/provider-main';
+                break;
+              case 'rejected':
+                // Clear login info for rejected users
+                await PreferenceService.clearUserLoginInfo();
+                _initialRoute = '/provider-login';
+                break;
+              default:
+                _initialRoute = '/provider-main';
             }
           } else {
-            // User is not authenticated in Firebase, clear preferences
+            // User is not a provider, clear login info
             await PreferenceService.clearUserLoginInfo();
             _initialRoute = '/provider-login';
           }

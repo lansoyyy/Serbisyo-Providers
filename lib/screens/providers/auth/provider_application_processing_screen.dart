@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../utils/colors.dart';
 import '../../../widgets/text_widget.dart';
 import '../../../widgets/touchable_widget.dart';
 import '../../../widgets/button_widget.dart';
+import '../../../services/preference_service.dart';
 
 class ProviderApplicationProcessingScreen extends StatefulWidget {
   const ProviderApplicationProcessingScreen({Key? key}) : super(key: key);
@@ -72,7 +72,7 @@ class _ProviderApplicationProcessingScreenState
 
   void _monitorApplicationStatus() {
     // Listen to application status changes
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = PreferenceService.getUserId();
     if (uid != null) {
       FirebaseFirestore.instance
           .collection('providers')

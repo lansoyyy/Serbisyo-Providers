@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hanap_raket/screens/providers/subscreens/provider_chat_screen.dart';
 import '../../../utils/colors.dart';
 import '../../../widgets/text_widget.dart';
 import '../../../widgets/touchable_widget.dart';
+import '../../../services/preference_service.dart';
 
 class ProviderMessagesScreen extends StatefulWidget {
   const ProviderMessagesScreen({Key? key}) : super(key: key);
@@ -224,7 +224,7 @@ class _ProviderMessagesScreenState extends State<ProviderMessagesScreen>
   // Stream to fetch provider's conversations
   Stream<QuerySnapshot<Map<String, dynamic>>>
       _getProviderConversationsStream() {
-    final providerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final providerId = PreferenceService.getUserId() ?? '';
     return FirebaseFirestore.instance
         .collection('bookings')
         .where('providerId', isEqualTo: providerId)
@@ -419,7 +419,7 @@ class _ProviderMessagesScreenState extends State<ProviderMessagesScreen>
 
   Widget _buildConversationCard(Map<String, dynamic> conversation) {
     final String userId = conversation['id'] as String;
-    final String providerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final String providerId = PreferenceService.getUserId() ?? '';
 
     // Generate chat room ID (same logic as in chat service)
     List<String> sortedIds = [userId, providerId]..sort();

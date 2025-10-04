@@ -4,7 +4,7 @@ class PreferenceService {
   static const String _keyOnboardingSeen = 'onboarding_seen';
   static const String _keyIsLoggedIn = 'is_logged_in';
   static const String _keyUserId = 'user_id';
-  static const String _keyUserEmail = 'user_email';
+  static const String _keyUsername = 'user_username';
   static const String _keyRememberMe = 'remember_me';
   static SharedPreferences? _prefs;
 
@@ -45,13 +45,13 @@ class PreferenceService {
     await prefs.setString(_keyUserId, userId);
   }
 
-  static String? getUserEmail() {
-    return _prefs?.getString(_keyUserEmail);
+  static String? getUsername() {
+    return _prefs?.getString(_keyUsername);
   }
 
-  static Future<void> setUserEmail(String email) async {
+  static Future<void> setUsername(String username) async {
     final prefs = _prefs ?? await SharedPreferences.getInstance();
-    await prefs.setString(_keyUserEmail, email);
+    await prefs.setString(_keyUsername, username);
   }
 
   static bool isRememberMeEnabled() {
@@ -66,14 +66,14 @@ class PreferenceService {
   // Save user login information
   static Future<void> saveUserLoginInfo({
     required String userId,
-    required String email,
+    required String username,
     required bool rememberMe,
   }) async {
     final prefs = _prefs ?? await SharedPreferences.getInstance();
     await Future.wait([
       prefs.setBool(_keyIsLoggedIn, true),
       prefs.setString(_keyUserId, userId),
-      prefs.setString(_keyUserEmail, email),
+      prefs.setString(_keyUsername, username),
       prefs.setBool(_keyRememberMe, rememberMe),
     ]);
   }
@@ -84,7 +84,7 @@ class PreferenceService {
     await Future.wait([
       prefs.remove(_keyIsLoggedIn),
       prefs.remove(_keyUserId),
-      prefs.remove(_keyUserEmail),
+      prefs.remove(_keyUsername),
     ]);
   }
 }

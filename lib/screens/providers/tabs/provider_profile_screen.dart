@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
@@ -242,7 +241,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   }
 
   Future<void> _ensureProviderDataExists() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = PreferenceService.getUserId();
     if (uid == null) return;
 
     try {
@@ -423,16 +422,18 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   }
 
   Widget _buildProfileHeader() {
+    final uid = PreferenceService.getUserId();
+    final username = PreferenceService.getUsername();
+
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('providers')
-          .doc(FirebaseAuth.instance.currentUser?.uid ?? '_')
+          .doc(uid ?? '_')
           .snapshots(),
       builder: (context, snapshot) {
-        final authUser = FirebaseAuth.instance.currentUser;
-        String displayName = authUser?.displayName ?? 'Provider';
+        String displayName = username ?? 'Provider';
         String businessName = 'Professional Services';
-        String email = authUser?.email ?? '';
+        String email = '';
 
         if (snapshot.hasData && snapshot.data?.data() != null) {
           final data = snapshot.data!.data()!;
@@ -466,7 +467,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                   child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                     stream: FirebaseFirestore.instance
                         .collection('providers')
-                        .doc(FirebaseAuth.instance.currentUser?.uid ?? '_')
+                        .doc(uid ?? '_')
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.hasData && snapshot.data!.data() != null) {
@@ -573,8 +574,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: FirebaseFirestore.instance
                   .collection('bookings')
-                  .where('providerId',
-                      isEqualTo: FirebaseAuth.instance.currentUser?.uid ?? '_')
+                  .where('providerId', isEqualTo: uid ?? '_')
                   .snapshots(),
               builder: (context, bookingsSnapshot) {
                 if (bookingsSnapshot.connectionState ==
@@ -746,10 +746,12 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   }
 
   Widget _buildInfoCard() {
+    final uid = PreferenceService.getUserId();
+
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('providers')
-          .doc(FirebaseAuth.instance.currentUser?.uid ?? '_')
+          .doc(uid ?? '_')
           .snapshots(),
       builder: (context, snapshot) {
         String aboutText =
@@ -835,15 +837,16 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   }
 
   Widget _buildContactCard() {
+    final uid = PreferenceService.getUserId();
+
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('providers')
-          .doc(FirebaseAuth.instance.currentUser?.uid ?? '_')
+          .doc(uid ?? '_')
           .snapshots(),
       builder: (context, snapshot) {
-        final authUser = FirebaseAuth.instance.currentUser;
         String phone = '—';
-        String email = authUser?.email ?? '—';
+        String email = '';
         String location = '—';
         String availability = 'Mon-Sat, 8:00 AM - 6:00 PM';
 
@@ -991,10 +994,12 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   }
 
   Widget _buildExperienceCard() {
+    final uid = PreferenceService.getUserId();
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('providers')
-          .doc(FirebaseAuth.instance.currentUser?.uid ?? '_')
+          .doc(uid ?? '_')
           .collection('experience')
           .orderBy('startDate', descending: true)
           .snapshots(),
@@ -1240,10 +1245,12 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   }
 
   Widget _buildCertificationsCard() {
+    final uid = PreferenceService.getUserId();
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('providers')
-          .doc(FirebaseAuth.instance.currentUser?.uid ?? '_')
+          .doc(uid ?? '_')
           .collection('certifications')
           .orderBy('year', descending: true)
           .snapshots(),
@@ -1667,10 +1674,12 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   }
 
   Widget _buildServicesTab() {
+    final uid = PreferenceService.getUserId();
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('providers')
-          .doc(FirebaseAuth.instance.currentUser?.uid ?? '_')
+          .doc(uid ?? '_')
           .collection('serviceCategories')
           .snapshots(),
       builder: (context, snapshot) {
@@ -1864,10 +1873,12 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   }
 
   Widget _buildCategoryServices(String categoryName) {
+    final uid = PreferenceService.getUserId();
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('providers')
-          .doc(FirebaseAuth.instance.currentUser?.uid ?? '_')
+          .doc(uid ?? '_')
           .collection('services')
           .where('category', isEqualTo: categoryName)
           .snapshots(),
@@ -2227,11 +2238,12 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   }
 
   Widget _buildReviewsTab() {
+    final uid = PreferenceService.getUserId();
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('bookings')
-          .where('providerId',
-              isEqualTo: FirebaseAuth.instance.currentUser?.uid ?? '_')
+          .where('providerId', isEqualTo: uid ?? '_')
           .where('status', isEqualTo: 'completed')
           .where('rating', isGreaterThan: 0)
           .orderBy('rating', descending: true)
@@ -2628,7 +2640,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
               onPressed: isSaving
                   ? null
                   : () async {
-                      final uid = FirebaseAuth.instance.currentUser?.uid;
+                      final uid = PreferenceService.getUserId();
                       if (uid == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -2817,7 +2829,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
               onPressed: isSaving
                   ? null
                   : () async {
-                      final uid = FirebaseAuth.instance.currentUser?.uid;
+                      final uid = PreferenceService.getUserId();
                       if (uid == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -3010,7 +3022,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                         return;
                       }
 
-                      final uid = FirebaseAuth.instance.currentUser?.uid;
+                      final uid = PreferenceService.getUserId();
                       if (uid == null) return;
 
                       setDialogState(() => isSaving = true);
@@ -3287,7 +3299,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                         return;
                       }
 
-                      final uid = FirebaseAuth.instance.currentUser?.uid;
+                      final uid = PreferenceService.getUserId();
                       if (uid == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -3523,7 +3535,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                         return;
                       }
 
-                      final uid = FirebaseAuth.instance.currentUser?.uid;
+                      final uid = PreferenceService.getUserId();
                       if (uid == null) return;
 
                       setDialogState(() => isSaving = true);
@@ -3827,7 +3839,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
 
   // New provider-specific functions
   void _showEditProviderProfileDialog() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = PreferenceService.getUserId();
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You must be logged in to edit profile.')),
@@ -4189,9 +4201,6 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
       // Clear user login information from preferences
       await PreferenceService.clearUserLoginInfo();
 
-      // Sign out from Firebase
-      await FirebaseAuth.instance.signOut();
-
       // Navigate to login screen
       Get.offAllNamed('/provider-login');
     } catch (e) {
@@ -4433,7 +4442,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
               onPressed: isSaving
                   ? null
                   : () async {
-                      final uid = FirebaseAuth.instance.currentUser?.uid;
+                      final uid = PreferenceService.getUserId();
                       if (uid == null) return;
 
                       setDialogState(() => isSaving = true);
@@ -4491,7 +4500,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   }
 
   Future<void> _toggleServiceStatus(String serviceId, bool newStatus) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = PreferenceService.getUserId();
     if (uid == null) return;
 
     try {
@@ -4546,7 +4555,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
           ),
           ElevatedButton(
             onPressed: () async {
-              final uid = FirebaseAuth.instance.currentUser?.uid;
+              final uid = PreferenceService.getUserId();
               if (uid == null) return;
 
               try {
@@ -4639,7 +4648,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
               onPressed: isSaving
                   ? null
                   : () async {
-                      final uid = FirebaseAuth.instance.currentUser?.uid;
+                      final uid = PreferenceService.getUserId();
                       if (uid == null) return;
 
                       setDialogState(() => isSaving = true);
@@ -4698,7 +4707,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              final uid = FirebaseAuth.instance.currentUser?.uid;
+              final uid = PreferenceService.getUserId();
               if (uid == null) return;
 
               try {
@@ -4772,7 +4781,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
               onPressed: isSaving
                   ? null
                   : () async {
-                      final uid = FirebaseAuth.instance.currentUser?.uid;
+                      final uid = PreferenceService.getUserId();
                       if (uid == null) return;
 
                       setDialogState(() => isSaving = true);
@@ -4830,7 +4839,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              final uid = FirebaseAuth.instance.currentUser?.uid;
+              final uid = PreferenceService.getUserId();
               if (uid == null) return;
 
               try {
@@ -4892,7 +4901,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
   Future<void> _uploadProfileImage() async {
     if (_profileImage == null) return;
 
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = PreferenceService.getUserId();
     if (uid == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

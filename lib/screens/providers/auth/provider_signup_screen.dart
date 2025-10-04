@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../utils/colors.dart';
 import '../../../widgets/text_widget.dart';
 import '../../../widgets/touchable_widget.dart';
 import '../../../widgets/app_text_form_field.dart';
 import '../../../widgets/button_widget.dart';
+import '../../../services/preference_service.dart';
 
 class ProviderSignupScreen extends StatefulWidget {
   const ProviderSignupScreen({Key? key}) : super(key: key);
@@ -26,7 +28,6 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
   // Personal Information Controllers
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _aboutController = TextEditingController();
 
@@ -59,6 +60,10 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
   String? _profileImagePath;
   String? _policeClearanceImagePath;
   String? _certificateImagePath;
+  String? _policeClearanceFileName;
+  String? _certificateFileName;
+  bool _policeClearanceIsImage = true;
+  bool _certificateIsImage = true;
 
   // Service categories
   final List<String> _serviceCategories = [
@@ -242,7 +247,6 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
     // Dispose all controllers
     _fullNameController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
     _locationController.dispose();
     _aboutController.dispose();
     _businessNameController.dispose();
@@ -314,25 +318,32 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
     });
 
     try {
-      // Create Firebase Auth account
-      final UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      // Check if username is already taken
+      final username = _usernameController.text.trim();
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('providers')
+          .where('username', isEqualTo: username)
+          .limit(1)
+          .get();
 
-      final String uid = userCredential.user!.uid;
+      if (querySnapshot.docs.isNotEmpty) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorDialog(
+            'This username is already taken. Please choose another one.');
+        return;
+      }
 
-      // Update display name
-      await userCredential.user!
-          .updateDisplayName(_fullNameController.text.trim());
+      // Generate a unique ID for the provider document
+      final String uid =
+          FirebaseFirestore.instance.collection('providers').doc().id;
 
       // Create provider profile in Firestore
       await FirebaseFirestore.instance.collection('providers').doc(uid).set({
         // Personal Information
         'fullName': _fullNameController.text.trim(),
         'phone': _phoneController.text.trim(),
-        'email': _emailController.text.trim(),
         'location': _locationController.text.trim(),
         'about': _aboutController.text.trim(),
 
@@ -345,6 +356,8 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
 
         // Account Information
         'username': _usernameController.text.trim(),
+        'password': _passwordController.text
+            .trim(), // Store password (in production, use proper hashing)
 
         // Application Status
         'applicationStatus': 'pending',
@@ -383,39 +396,19 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
         'lastActive': FieldValue.serverTimestamp(),
       });
 
-      // Sign out the user (they need admin approval)
-      await FirebaseAuth.instance.signOut();
-
       setState(() {
         _isLoading = false;
       });
+
+      // Save user login information to preferences
+      await PreferenceService.saveUserLoginInfo(
+        userId: uid,
+        username: _usernameController.text.trim(),
+        rememberMe: true,
+      );
 
       // Show success dialog and navigate
       _showSuccessDialog();
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
-      String errorMessage = 'Registration failed. Please try again.';
-
-      switch (e.code) {
-        case 'email-already-in-use':
-          errorMessage = 'An account with this email already exists.';
-          break;
-        case 'weak-password':
-          errorMessage =
-              'Password is too weak. Please choose a stronger password.';
-          break;
-        case 'invalid-email':
-          errorMessage = 'Please enter a valid email address.';
-          break;
-        case 'operation-not-allowed':
-          errorMessage = 'Email/password accounts are not enabled.';
-          break;
-      }
-
-      _showErrorDialog(errorMessage);
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -950,29 +943,12 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
             _buildFormField(
               'Phone Number',
               _phoneController,
-              '+63 912 345 6789',
+              '0912 345 6789',
               FontAwesomeIcons.phone,
               TextInputType.phone,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter your phone number';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            _buildFormField(
-              'Email Address',
-              _emailController,
-              'your.email@example.com',
-              FontAwesomeIcons.envelope,
-              TextInputType.emailAddress,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your email';
-                }
-                if (!GetUtils.isEmail(value)) {
-                  return 'Please enter a valid email';
                 }
                 return null;
               },
@@ -1557,11 +1533,13 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
         const SizedBox(height: 12),
 
         // Police Clearance Upload (Required)
-        _buildPhotoUploadCard(
+        _buildDocumentUploadCard(
           title: 'Police Clearance',
-          subtitle: 'Upload a clear photo of your police clearance',
+          subtitle: 'Upload a clear photo or file of your police clearance',
           isRequired: true,
-          imagePath: _policeClearanceImagePath,
+          filePath: _policeClearanceImagePath,
+          fileName: _policeClearanceFileName,
+          isImage: _policeClearanceIsImage,
           onTap: () => _selectImage('clearance'),
           icon: FontAwesomeIcons.shieldHalved,
           color: Colors.green,
@@ -1570,11 +1548,13 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
         const SizedBox(height: 12),
 
         // Certificate Upload (Optional)
-        _buildPhotoUploadCard(
+        _buildDocumentUploadCard(
           title: 'Certificate (Optional)',
           subtitle: 'Upload NC2, diploma, or relevant certificates',
           isRequired: false,
-          imagePath: _certificateImagePath,
+          filePath: _certificateImagePath,
+          fileName: _certificateFileName,
+          isImage: _certificateIsImage,
           onTap: () => _selectImage('certificate'),
           icon: FontAwesomeIcons.certificate,
           color: Colors.orange,
@@ -1739,6 +1719,140 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
     );
   }
 
+  Widget _buildDocumentUploadCard({
+    required String title,
+    required String subtitle,
+    required bool isRequired,
+    required String? filePath,
+    required String? fileName,
+    required bool isImage,
+    required VoidCallback onTap,
+    required IconData icon,
+    required Color color,
+  }) {
+    return TouchableWidget(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: filePath != null
+              ? color.withOpacity(0.1)
+              : Colors.grey.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: filePath != null
+                ? color.withOpacity(0.3)
+                : Colors.grey.withOpacity(0.3),
+            width: filePath != null ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Icon Container
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: filePath != null
+                    ? color.withOpacity(0.2)
+                    : Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                filePath != null
+                    ? (isImage ? FontAwesomeIcons.image : FontAwesomeIcons.file)
+                    : icon,
+                size: filePath != null ? 20 : 24,
+                color: filePath != null ? color : Colors.grey,
+              ),
+            ),
+            const SizedBox(width: 16),
+
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      TextWidget(
+                        text: title,
+                        fontSize: 14,
+                        fontFamily: 'Bold',
+                        color: filePath != null ? color : AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      if (isRequired)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: TextWidget(
+                            text: 'Required',
+                            fontSize: 10,
+                            fontFamily: 'Bold',
+                            color: Colors.red,
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: TextWidget(
+                            text: 'Optional',
+                            fontSize: 10,
+                            fontFamily: 'Bold',
+                            color: Colors.blue,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  if (filePath != null)
+                    Text(
+                      fileName ?? 'File uploaded successfully',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'Regular',
+                        color: color,
+                      ),
+                      textAlign: TextAlign.left,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  else
+                    TextWidget(
+                      text: subtitle,
+                      fontSize: 12,
+                      fontFamily: 'Regular',
+                      color: AppColors.onSecondary.withOpacity(0.7),
+                      align: TextAlign.left,
+                    ),
+                ],
+              ),
+            ),
+
+            // Upload Icon
+            Icon(
+              filePath != null
+                  ? FontAwesomeIcons.penToSquare
+                  : FontAwesomeIcons.plus,
+              size: 16,
+              color: filePath != null ? color : Colors.grey,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _selectImage(String type) {
     showModalBottomSheet(
       context: context,
@@ -1850,25 +1964,218 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
     );
   }
 
-  void _pickImageFromSource(String type, String source) {
-    // Simulate image picking
-    // In a real app, you would use image_picker plugin here
-    setState(() {
-      switch (type) {
-        case 'profile':
-          _profileImagePath = 'path/to/profile_image.jpg';
-          break;
-        case 'clearance':
-          _policeClearanceImagePath = 'path/to/police_clearance.jpg';
-          break;
-        case 'certificate':
-          _certificateImagePath = 'path/to/certificate.jpg';
-          break;
-      }
-    });
+  Future<void> _pickImageFromSource(String type, String source) async {
+    try {
+      if (type == 'profile') {
+        // Profile picture only accepts images
+        final ImagePicker picker = ImagePicker();
+        final XFile? image = await picker.pickImage(
+          source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
+          imageQuality: 80,
+        );
 
-    // Show success message
-    _showImageUploadSuccess(type);
+        if (image != null) {
+          setState(() {
+            _profileImagePath = image.path;
+          });
+          _showImageUploadSuccess(type);
+        }
+      } else if (type == 'clearance' || type == 'certificate') {
+        // Police clearance and certificate can be images or files
+        if (source == 'camera') {
+          // Camera option - only images
+          final ImagePicker picker = ImagePicker();
+          final XFile? image = await picker.pickImage(
+            source: ImageSource.camera,
+            imageQuality: 80,
+          );
+
+          if (image != null) {
+            setState(() {
+              if (type == 'clearance') {
+                _policeClearanceImagePath = image.path;
+                _policeClearanceFileName = image.name;
+                _policeClearanceIsImage = true;
+              } else {
+                _certificateImagePath = image.path;
+                _certificateFileName = image.name;
+                _certificateIsImage = true;
+              }
+            });
+            _showImageUploadSuccess(type);
+          }
+        } else if (source == 'gallery') {
+          // Gallery option - show choice between image and file
+          _showMediaChoiceDialog(type);
+        }
+      }
+    } catch (e) {
+      _showErrorDialog('Failed to pick file: $e');
+    }
+  }
+
+  void _showMediaChoiceDialog(String type) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: TextWidget(
+            text: 'Select Media Type',
+            fontSize: 18,
+            fontFamily: 'Bold',
+            color: AppColors.primary,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TouchableWidget(
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImageFromGallery(type);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        FontAwesomeIcons.image,
+                        size: 24,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      TextWidget(
+                        text: 'Image',
+                        fontSize: 16,
+                        fontFamily: 'Medium',
+                        color: AppColors.primary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TouchableWidget(
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickFile(type);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        FontAwesomeIcons.file,
+                        size: 24,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      TextWidget(
+                        text: 'File (PDF, DOC, etc.)',
+                        fontSize: 16,
+                        fontFamily: 'Medium',
+                        color: AppColors.primary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: TextWidget(
+                text: 'Cancel',
+                fontSize: 14,
+                fontFamily: 'Bold',
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImageFromGallery(String type) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        setState(() {
+          if (type == 'clearance') {
+            _policeClearanceImagePath = image.path;
+            _policeClearanceFileName = image.name;
+            _policeClearanceIsImage = true;
+          } else {
+            _certificateImagePath = image.path;
+            _certificateFileName = image.name;
+            _certificateIsImage = true;
+          }
+        });
+        _showImageUploadSuccess(type);
+      }
+    } catch (e) {
+      _showErrorDialog('Failed to pick image: $e');
+    }
+  }
+
+  Future<void> _pickFile(String type) async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        setState(() {
+          if (type == 'clearance') {
+            _policeClearanceImagePath = result.files.single.path;
+            _policeClearanceFileName = result.files.single.name;
+            _policeClearanceIsImage = _isImageFile(result.files.single.name);
+          } else {
+            _certificateImagePath = result.files.single.path;
+            _certificateFileName = result.files.single.name;
+            _certificateIsImage = _isImageFile(result.files.single.name);
+          }
+        });
+        _showImageUploadSuccess(type);
+      }
+    } catch (e) {
+      _showErrorDialog('Failed to pick file: $e');
+    }
+  }
+
+  bool _isImageFile(String fileName) {
+    final extension = fileName.toLowerCase().split('.').last;
+    return ['jpg', 'jpeg', 'png', 'gif', 'bmp'].contains(extension);
   }
 
   void _showImageUploadSuccess(String type) {

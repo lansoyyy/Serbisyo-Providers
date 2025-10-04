@@ -49,6 +49,7 @@ dependencies:
   flutter_facebook_auth: ^7.1.1
   shared_preferences: ^2.5.3
   image_picker: ^1.0.4
+  file_picker: ^6.1.1
 
 dev_dependencies:
   flutter_test:
