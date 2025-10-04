@@ -491,25 +491,44 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>
                           );
                         } else if (profilePicture != null &&
                             profilePicture.isNotEmpty) {
-                          // Show image from Firebase Storage
+                          // Check if it's a local file path or a URL
+                          final isUrl = profilePicture.startsWith('http');
+
                           return CircleAvatar(
                             radius: 50,
                             backgroundColor: Colors.white.withOpacity(0.1),
                             child: ClipOval(
-                              child: Image.network(
-                                profilePicture,
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  // Fallback to default icon if image fails to load
-                                  return const FaIcon(
-                                    FontAwesomeIcons.userTie,
-                                    color: Colors.white,
-                                    size: 40,
-                                  );
-                                },
-                              ),
+                              child: isUrl
+                                  ? Image.network(
+                                      profilePicture,
+                                      width: 100,
+                                      height: 100,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        // Fallback to default icon if image fails to load
+                                        return const FaIcon(
+                                          FontAwesomeIcons.userTie,
+                                          color: Colors.white,
+                                          size: 40,
+                                        );
+                                      },
+                                    )
+                                  : Image.file(
+                                      File(profilePicture),
+                                      width: 100,
+                                      height: 100,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        // Fallback to default icon if image fails to load
+                                        return const FaIcon(
+                                          FontAwesomeIcons.userTie,
+                                          color: Colors.white,
+                                          size: 40,
+                                        );
+                                      },
+                                    ),
                             ),
                           );
                         }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hanap_raket/utils/colors.dart';
+import 'dart:io';
 
 class ViewImageWidget extends StatelessWidget {
   String image;
@@ -9,6 +10,9 @@ class ViewImageWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if it's a local file path or a URL
+    final isUrl = image.startsWith('http');
+
     return Scaffold(
       backgroundColor: cloudWhite,
       appBar: AppBar(
@@ -26,9 +30,13 @@ class ViewImageWidget extends StatelessWidget {
         ),
       ),
       body: Center(
-        child: Image.network(
-          image,
-        ),
+        child: isUrl
+            ? Image.network(
+                image,
+              )
+            : Image.file(
+                File(image),
+              ),
       ),
     );
   }

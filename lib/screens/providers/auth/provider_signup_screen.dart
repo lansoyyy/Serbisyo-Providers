@@ -362,13 +362,13 @@ class _ProviderSignupScreenState extends State<ProviderSignupScreen>
         // Application Status
         'applicationStatus': 'pending',
         'applicationDate': FieldValue.serverTimestamp(),
-        'profilePicture': _profileImagePath != null,
+        'profilePicture': _profileImagePath,
 
         // Document Upload Status
         'documents': {
-          'profilePicture': _profileImagePath != null,
-          'policeClearance': _policeClearanceImagePath != null,
-          'certificate': _certificateImagePath != null,
+          'profilePicture': _profileImagePath,
+          'policeClearance': _policeClearanceImagePath,
+          'certificate': _certificateImagePath,
         },
 
         // Metadata
